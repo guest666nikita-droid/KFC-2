@@ -11,13 +11,26 @@
         #game-container { position: relative; width: 100vw; height: 100vh; background-color: #808080; }
         canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
 
+        /* Начальный экран для запуска интро (обход блокировки звука в браузере) */
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; align-items: center; justify-content: center;
+            z-index: 300; cursor: pointer; text-align: center;
+        }
+
+        /* Интро видео */
+        #intro-video {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 200; display: none; background: #000; cursor: pointer;
+        }
+
         /* Меню, Пауза и Выбор режима */
         #menu, #pause-menu, #mode-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 15, 15, 0.9); display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 100;
         }
-        #pause-menu, #mode-menu { display: none; }
+        #menu, #pause-menu, #mode-menu { display: none; }
         
         /* Стили для логотипа-картинки */
         .logo-img {
@@ -32,6 +45,13 @@
             color: #fff; font-size: 3rem; margin-bottom: 1.5rem; 
             text-shadow: 4px 4px 0 #e60000; text-align: center;
             letter-spacing: 2px;
+        }
+
+        .blink-text {
+            animation: blinker 1.5s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0; }
         }
         
         button {
@@ -96,13 +116,21 @@
 <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Главное Меню с картинкой-логотипом -->
+    <!-- Начальный экран для клика -->
+    <div id="start-screen">
+        <h1 class="blink-text">НАЖМИТЕ<br>ДЛЯ ЗАПУСКА</h1>
+    </div>
+
+    <!-- Интро видео -->
+    <video id="intro-video" src="intro.mp4" playsinline></video>
+
+    <!-- Главное Меню -->
     <div id="menu">
         <img src="1000369766.png" alt="KFC КОМБАТ 2" class="logo-img">
         <button id="play-btn">ИГРАТЬ</button>
     </div>
 
-    <!-- Меню выбора режима с картинкой-логотипом -->
+    <!-- Меню выбора режима -->
     <div id="mode-menu">
         <img src="1000369766.png" alt="KFC КОМБАТ 2" class="logo-img">
         <button id="normal-btn">ОБЫЧНЫЙ</button>
@@ -140,6 +168,38 @@
 </div>
 
 <script>
+    // --- Логика Интро ---
+    const startScreen = document.getElementById('start-screen');
+    const introVideo = document.getElementById('intro-video');
+    const menu = document.getElementById('menu');
+
+    // Клик по начальному экрану запускает интро
+    startScreen.addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        introVideo.style.display = 'block';
+        
+        introVideo.play().catch(e => {
+            // Если видео не найдено или заблокировано, сразу кидаем в меню
+            introVideo.style.display = 'none';
+            menu.style.display = 'flex';
+        });
+    });
+
+    // Когда видео заканчивается само
+    introVideo.addEventListener('ended', () => {
+        introVideo.style.display = 'none';
+        menu.style.display = 'flex';
+    });
+
+    // Пропуск интро при клике на экран
+    introVideo.addEventListener('click', () => {
+        introVideo.pause();
+        introVideo.style.display = 'none';
+        menu.style.display = 'flex';
+    });
+
+
+    // --- Основная логика игры ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -158,9 +218,9 @@
     const MAX_HP = 130;
     const DAMAGE = 3;
     const ATTACK_COOLDOWN = 2800; // Кулдаун подстроен под 2.6 сек анимации
-    const SPEED = 3.75; // Увеличено в 1.5 раза (было 2.5)
+    const SPEED = 3.75; // Увеличено в 1.5 раза
     
-    // Видеофайлы
+    // Видеофайлы персонажей
     const videos = {
         idle: createVideo('idle.mp4'),          
         attack: createVideo('1000369752.mp4'),  
