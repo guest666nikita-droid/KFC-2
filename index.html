@@ -11,7 +11,7 @@
         #game-container { position: relative; width: 100vw; height: 100vh; background-color: #808080; }
         canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-        /* Начальный экран для запуска интро (обход блокировки звука в браузере) */
+        /* Начальный экран для запуска интро */
         #start-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; display: flex; align-items: center; justify-content: center;
@@ -24,13 +24,14 @@
             object-fit: cover; z-index: 200; display: none; background: #000; cursor: pointer;
         }
 
-        /* Меню, Пауза и Выбор режима */
-        #menu, #pause-menu, #mode-menu {
+        /* Меню, Пауза, Выбор режима и Экран Победы */
+        #menu, #pause-menu, #mode-menu, #victory-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 15, 15, 0.9); display: flex; flex-direction: column;
+            background: rgba(15, 15, 15, 0.95); display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 100;
         }
-        #menu, #pause-menu, #mode-menu { display: none; }
+        #menu, #pause-menu, #mode-menu, #victory-menu { display: none; }
+        #victory-menu { z-index: 150; } /* Экран победы поверх всего */
         
         /* Стили для логотипа-картинки */
         .logo-img {
@@ -66,6 +67,31 @@
             background: #555; box-shadow: 0 6px 0 #333; margin-top: 30px;
         }
         .btn-secondary:active { box-shadow: 0 2px 0 #333; }
+
+        /* ОТОБРАЖЕНИЕ ВАЛЮТЫ (КРЫЛКОЙНЫ) */
+        .coin-display {
+            position: absolute; top: 20px; right: 20px;
+            display: flex; align-items: center;
+            background: rgba(0, 0, 0, 0.8); padding: 8px 15px;
+            border-radius: 30px; border: 2px solid #ffcc00;
+            color: #fff; font-size: 1.5rem; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+            z-index: 110;
+        }
+        .coin-icon { width: 35px; height: 35px; margin-right: 10px; }
+        
+        /* Награда на экране победы */
+        #victory-reward {
+            display: flex; flex-direction: column; align-items: center;
+            margin-bottom: 30px;
+        }
+        .coin-icon-large {
+            width: 100px; height: 100px; margin-bottom: 5px;
+            filter: drop-shadow(0 0 20px rgba(255, 204, 0, 0.6));
+        }
+        #victory-reward h2 {
+            color: #ffcc00; font-size: 3rem; text-shadow: 3px 3px 0 #000;
+        }
 
         /* Интерфейс HP и Пауза */
         #ui {
@@ -126,6 +152,10 @@
 
     <!-- Главное Меню -->
     <div id="menu">
+        <div class="coin-display">
+            <img src="1000369791_2906d6.png" class="coin-icon">
+            <span id="menu-coin-count">0</span>
+        </div>
         <img src="1000369766.png" alt="KFC КОМБАТ 2" class="logo-img">
         <button id="play-btn">ИГРАТЬ</button>
     </div>
@@ -140,9 +170,23 @@
 
     <!-- Пауза -->
     <div id="pause-menu">
+        <div class="coin-display">
+            <img src="1000369791_2906d6.png" class="coin-icon">
+            <span id="pause-coin-count">0</span>
+        </div>
         <h1>ПАУЗА</h1>
         <button id="resume-btn">ПРОДОЛЖИТЬ</button>
         <button id="exit-btn">ВЫЙТИ</button>
+    </div>
+
+    <!-- Экран Победы / Поражения -->
+    <div id="victory-menu">
+        <h1 id="victory-title">ТЫ ПОБЕДИЛ!</h1>
+        <div id="victory-reward">
+            <img src="1000369791_2906d6.png" class="coin-icon-large">
+            <h2>+10</h2>
+        </div>
+        <button id="victory-to-menu-btn">В МЕНЮ</button>
     </div>
 
     <!-- Интерфейс HP -->
@@ -168,30 +212,38 @@
 </div>
 
 <script>
+    // --- Система Валюты (Крылкойны) ---
+    // Достаем монеты из сохранения браузера. Если их нет, то 0.
+    let wingsCoins = localStorage.getItem('wingsCoins') ? parseInt(localStorage.getItem('wingsCoins')) : 0;
+
+    function updateCoinDisplays() {
+        document.getElementById('menu-coin-count').innerText = wingsCoins;
+        document.getElementById('pause-coin-count').innerText = wingsCoins;
+        localStorage.setItem('wingsCoins', wingsCoins); // Сохраняем в память
+    }
+    updateCoinDisplays(); // Обновляем при запуске
+
+
     // --- Логика Интро ---
     const startScreen = document.getElementById('start-screen');
     const introVideo = document.getElementById('intro-video');
     const menu = document.getElementById('menu');
 
-    // Клик по начальному экрану запускает интро
     startScreen.addEventListener('click', () => {
         startScreen.style.display = 'none';
         introVideo.style.display = 'block';
         
         introVideo.play().catch(e => {
-            // Если видео не найдено или заблокировано, сразу кидаем в меню
             introVideo.style.display = 'none';
             menu.style.display = 'flex';
         });
     });
 
-    // Когда видео заканчивается само
     introVideo.addEventListener('ended', () => {
         introVideo.style.display = 'none';
         menu.style.display = 'flex';
     });
 
-    // Пропуск интро при клике на экран
     introVideo.addEventListener('click', () => {
         introVideo.pause();
         introVideo.style.display = 'none';
@@ -215,12 +267,11 @@
     let gameLoop;
 
     // Настройки баланса и скорости
-    const MAX_HP = 130;
-    const DAMAGE = 3;
-    const ATTACK_COOLDOWN = 2800; // Кулдаун подстроен под 2.6 сек анимации
-    const SPEED = 3.75; // Увеличено в 1.5 раза
+    const MAX_HP = 100;    // Теперь 100 ХП
+    const DAMAGE = 6;      // Урон 6 ХП за удар
+    const ATTACK_COOLDOWN = 2800; 
+    const SPEED = 3.75; 
     
-    // Видеофайлы персонажей
     const videos = {
         idle: createVideo('idle.mp4'),          
         attack: createVideo('1000369752.mp4'),  
@@ -294,7 +345,6 @@
             if (this.state === 'attack') {
                 this.stateTime -= deltaTime;
                 
-                // Наносим урон примерно в середине анимации (на отметке ~1.3 секунды)
                 if (this.stateTime > 1200 && this.stateTime < 1500 && !this.hasDealtDamage) {
                     if (enemy) this.checkHit(enemy);
                     this.hasDealtDamage = true;
@@ -333,7 +383,7 @@
             const now = Date.now();
             if (now - this.lastAttackTime >= ATTACK_COOLDOWN && this.state !== 'hit' && this.state !== 'attack') {
                 this.state = 'attack';
-                this.stateTime = 2600; // Увеличенной до 2.6 секунд для полного проигрывания видео удара
+                this.stateTime = 2600; 
                 this.lastAttackTime = now;
                 this.hasDealtDamage = false;
                 videos.attack.currentTime = 0;
@@ -413,6 +463,38 @@
         ctx.fillRect(0, canvas.height - floorHeight, canvas.width, floorHeight);
     }
 
+    function showVictoryMenu() {
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('controls').style.display = 'none';
+        
+        const victoryMenu = document.getElementById('victory-menu');
+        const victoryTitle = document.getElementById('victory-title');
+        const victoryReward = document.getElementById('victory-reward');
+        
+        if (player.hp <= 0) {
+            // Игрок проиграл
+            victoryTitle.innerText = "БОТ ПОБЕДИЛ!";
+            victoryTitle.style.color = "#ff2222";
+            victoryTitle.style.textShadow = "4px 4px 0 #550000";
+            victoryReward.style.display = "none"; // Прячем награду
+        } else {
+            // Игрок выиграл
+            victoryTitle.innerText = "ТЫ ПОБЕДИЛ!";
+            victoryTitle.style.color = "#00ff44";
+            victoryTitle.style.textShadow = "4px 4px 0 #005511";
+            
+            if (gameMode === 'normal') {
+                victoryReward.style.display = "flex"; // Показываем награду
+                wingsCoins += 10;
+                updateCoinDisplays();
+            } else {
+                victoryReward.style.display = "none"; // В тренировке нет монет
+            }
+        }
+        
+        victoryMenu.style.display = 'flex';
+    }
+
     function loop(timestamp) {
         if (!isPlaying) return;
         if (!isPaused) {
@@ -431,12 +513,8 @@
 
             if (player.hp <= 0 || (bot && bot.hp <= 0)) {
                 isPlaying = false;
-                setTimeout(() => {
-                    alert(player.hp <= 0 ? "Бот победил!" : "Ты победил!");
-                    document.getElementById('ui').style.display = 'none';
-                    document.getElementById('controls').style.display = 'none';
-                    document.getElementById('menu').style.display = 'flex';
-                }, 300);
+                // Даем полсекунды доиграть анимацию смерти перед меню
+                setTimeout(showVictoryMenu, 600);
             }
         } else {
             lastTime = timestamp;
@@ -458,6 +536,11 @@
 
     document.getElementById('normal-btn').addEventListener('click', () => startGame('normal'));
     document.getElementById('training-btn').addEventListener('click', () => startGame('training'));
+
+    document.getElementById('victory-to-menu-btn').addEventListener('click', () => {
+        document.getElementById('victory-menu').style.display = 'none';
+        document.getElementById('menu').style.display = 'flex';
+    });
 
     function startGame(mode) {
         Object.values(videos).forEach(v => { v.play().catch(e => console.log(e)); });
