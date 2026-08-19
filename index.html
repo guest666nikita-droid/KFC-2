@@ -31,7 +31,7 @@
             align-items: center; justify-content: center; z-index: 100;
         }
         #menu, #pause-menu, #mode-menu, #victory-menu { display: none; }
-        #victory-menu { z-index: 150; } /* Экран победы поверх всего */
+        #victory-menu { z-index: 150; }
         
         /* Стили для логотипа-картинки */
         .logo-img {
@@ -67,6 +67,38 @@
             background: #555; box-shadow: 0 6px 0 #333; margin-top: 30px;
         }
         .btn-secondary:active { box-shadow: 0 2px 0 #333; }
+
+        /* Кнопка админ-панели */
+        #admin-btn-trigger {
+            position: absolute; top: 20px; left: 20px;
+            background: transparent; border: none; font-size: 2.2rem;
+            box-shadow: none; padding: 0; cursor: pointer; z-index: 110; margin: 0;
+        }
+        #admin-btn-trigger:active { transform: scale(0.9); box-shadow: none; }
+
+        /* Админ Панель */
+        #admin-panel {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 10, 0.98); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 250;
+            color: white; overflow-y: auto; padding: 20px;
+        }
+        #admin-panel h2 { color: #ffcc00; margin-bottom: 20px; font-size: 2rem; text-shadow: 2px 2px 0 #000; text-align: center; }
+
+        .admin-section {
+            background: #222; padding: 15px; border: 2px solid #fff; border-radius: 12px;
+            margin-bottom: 20px; width: 100%; max-width: 350px; text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        }
+        .admin-section h3 { margin-bottom: 15px; color: #fff; font-size: 1.2rem; }
+        .admin-section input {
+            width: 100%; padding: 12px; margin-bottom: 15px; font-size: 1.5rem;
+            border-radius: 8px; border: 2px solid #555; text-align: center;
+            font-weight: bold; background: #111; color: #00ff44;
+        }
+        .admin-buttons { display: flex; justify-content: space-between; gap: 10px; }
+        .admin-buttons button { margin: 0; padding: 12px; font-size: 1rem; flex: 1; }
+        #admin-close { margin-top: 10px; }
 
         /* ОТОБРАЖЕНИЕ ВАЛЮТЫ (КРЫЛКОЙНЫ) */
         .coin-display {
@@ -152,12 +184,35 @@
 
     <!-- Главное Меню -->
     <div id="menu">
+        <button id="admin-btn-trigger">⚙️</button>
         <div class="coin-display">
             <img src="1000369791_2906d6.png" class="coin-icon">
             <span id="menu-coin-count">0</span>
         </div>
         <img src="1000369766.png" alt="KFC КОМБАТ 2" class="logo-img">
         <button id="play-btn">ИГРАТЬ</button>
+    </div>
+
+    <!-- Админ Панель -->
+    <div id="admin-panel">
+        <h2>АДМИН ПАНЕЛЬ</h2>
+        
+        <div class="admin-section">
+            <h3>Крылкойны</h3>
+            <input type="number" id="admin-coins-input" placeholder="Количество">
+            <button id="admin-coins-btn">Установить</button>
+        </div>
+        
+        <div class="admin-section">
+            <h3>Урон персонажей</h3>
+            <input type="number" id="admin-damage-input" placeholder="Урон">
+            <div class="admin-buttons">
+                <button id="admin-dmg-cancel" class="btn-secondary">Отменить</button>
+                <button id="admin-dmg-save">Готово</button>
+            </div>
+        </div>
+        
+        <button id="admin-close" class="btn-secondary">ЗАКРЫТЬ</button>
     </div>
 
     <!-- Меню выбора режима -->
@@ -212,16 +267,70 @@
 </div>
 
 <script>
-    // --- Система Валюты (Крылкойны) ---
-    // Достаем монеты из сохранения браузера. Если их нет, то 0.
+    // --- Система Валюты (Крылкойны) и Сохранение ---
     let wingsCoins = localStorage.getItem('wingsCoins') ? parseInt(localStorage.getItem('wingsCoins')) : 0;
+    
+    // Настройка урона (по умолчанию 6)
+    let DAMAGE = localStorage.getItem('customDamage') ? parseInt(localStorage.getItem('customDamage')) : 6;
 
     function updateCoinDisplays() {
         document.getElementById('menu-coin-count').innerText = wingsCoins;
         document.getElementById('pause-coin-count').innerText = wingsCoins;
-        localStorage.setItem('wingsCoins', wingsCoins); // Сохраняем в память
+        localStorage.setItem('wingsCoins', wingsCoins);
     }
-    updateCoinDisplays(); // Обновляем при запуске
+    updateCoinDisplays();
+
+    // --- Логика Админ-Панели ---
+    const adminBtnTrigger = document.getElementById('admin-btn-trigger');
+    const adminPanel = document.getElementById('admin-panel');
+    const adminCoinsInput = document.getElementById('admin-coins-input');
+    const adminCoinsBtn = document.getElementById('admin-coins-btn');
+    const adminDamageInput = document.getElementById('admin-damage-input');
+    const adminDmgCancel = document.getElementById('admin-dmg-cancel');
+    const adminDmgSave = document.getElementById('admin-dmg-save');
+    const adminClose = document.getElementById('admin-close');
+
+    adminBtnTrigger.addEventListener('click', () => {
+        const password = prompt("Введите код админ-панели:");
+        if (password === "KFC🍟➕🍔➕🍗Bos") {
+            adminCoinsInput.value = wingsCoins;
+            adminDamageInput.value = DAMAGE;
+            adminPanel.style.display = 'flex';
+        } else if (password !== null) {
+            alert("Неверный код!");
+        }
+    });
+
+    adminCoinsBtn.addEventListener('click', () => {
+        let val = parseInt(adminCoinsInput.value);
+        if (!isNaN(val)) {
+            wingsCoins = val;
+            updateCoinDisplays();
+            alert("Крылкойны успешно обновлены!");
+        }
+    });
+
+    adminDmgSave.addEventListener('click', () => {
+        let val = parseInt(adminDamageInput.value);
+        if (!isNaN(val) && val > 0) {
+            DAMAGE = val;
+            localStorage.setItem('customDamage', DAMAGE);
+            alert("Урон сохранен!");
+        } else {
+            alert("Введите корректное число урона!");
+        }
+    });
+
+    adminDmgCancel.addEventListener('click', () => {
+        DAMAGE = 6; // Сброс до стандартного
+        localStorage.setItem('customDamage', DAMAGE);
+        adminDamageInput.value = DAMAGE;
+        alert("Урон сброшен до стандартного (6)!");
+    });
+
+    adminClose.addEventListener('click', () => {
+        adminPanel.style.display = 'none';
+    });
 
 
     // --- Логика Интро ---
@@ -266,9 +375,7 @@
     let gameMode = 'normal'; 
     let gameLoop;
 
-    // Настройки баланса и скорости
-    const MAX_HP = 100;    // Теперь 100 ХП
-    const DAMAGE = 6;      // Урон 6 ХП за удар
+    const MAX_HP = 100;    
     const ATTACK_COOLDOWN = 2800; 
     const SPEED = 3.75; 
     
@@ -396,7 +503,7 @@
             const facingEnemy = (this.dir === 1 && enemy.x > this.x) || (this.dir === -1 && enemy.x < this.x);
             
             if (dist < 80 && facingEnemy) {
-                enemy.takeDamage(DAMAGE);
+                enemy.takeDamage(DAMAGE); // Использует динамический урон из админки
             }
         }
 
@@ -472,23 +579,21 @@
         const victoryReward = document.getElementById('victory-reward');
         
         if (player.hp <= 0) {
-            // Игрок проиграл
             victoryTitle.innerText = "БОТ ПОБЕДИЛ!";
             victoryTitle.style.color = "#ff2222";
             victoryTitle.style.textShadow = "4px 4px 0 #550000";
-            victoryReward.style.display = "none"; // Прячем награду
+            victoryReward.style.display = "none";
         } else {
-            // Игрок выиграл
             victoryTitle.innerText = "ТЫ ПОБЕДИЛ!";
             victoryTitle.style.color = "#00ff44";
             victoryTitle.style.textShadow = "4px 4px 0 #005511";
             
             if (gameMode === 'normal') {
-                victoryReward.style.display = "flex"; // Показываем награду
+                victoryReward.style.display = "flex";
                 wingsCoins += 10;
                 updateCoinDisplays();
             } else {
-                victoryReward.style.display = "none"; // В тренировке нет монет
+                victoryReward.style.display = "none";
             }
         }
         
@@ -513,7 +618,6 @@
 
             if (player.hp <= 0 || (bot && bot.hp <= 0)) {
                 isPlaying = false;
-                // Даем полсекунды доиграть анимацию смерти перед меню
                 setTimeout(showVictoryMenu, 600);
             }
         } else {
@@ -644,4 +748,3 @@
 </script>
 </body>
 </html>
-
